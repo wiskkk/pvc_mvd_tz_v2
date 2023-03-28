@@ -1,14 +1,14 @@
 import io
 from typing import List
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, Depends
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import text, func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 import crud
 import schemas
-from db import SessionLocal, engine, Base
+from db import Base, SessionLocal, engine
 from models import Image, ImageComment
 
 app = FastAPI()
@@ -59,11 +59,12 @@ async def delete_image(image_id: int):
 @app.get("/images/{image_id}")
 async def get_image(image_id: int):
     db = SessionLocal()
-    image_bytes = db.query(Image).get(image_id).contents
+    image_obj = db.query(Image).get(image_id)
+    if not image_obj:
+        raise HTTPException(status_code=404, detail=f"image with id {image_id} not found")
+    image_bytes = image_obj.contents
     db.close()
 
-    if not image_bytes:
-        raise HTTPException(status_code=404, detail=f"image with id {id} not found")
     return StreamingResponse(io.BytesIO(image_bytes), media_type="image/png")
 
 
